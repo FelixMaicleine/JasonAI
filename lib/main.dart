@@ -41,6 +41,7 @@ class _VirtualAssistantState extends State<VirtualAssistant> {
   Timer? _debounce;
   final TextEditingController _textController = TextEditingController();
   final Sentiment _sentiment = Sentiment();
+  late ScrollController _scrollController;
 
   final List<String> _indonesianPositiveWords = [
     "baik",
@@ -56,7 +57,7 @@ class _VirtualAssistantState extends State<VirtualAssistant> {
 
   final Map<String, Map<String, String>> _commands = {
     'english': {
-      'Hello': "Hello, I'm Jason AI, your Virtual Assistant.",
+      'hi': "Hello, I'm Jason AI, your Virtual Assistant.",
       'how are you': "I'm fine, thank you for asking.",
       'help':
           "Of course I can because I'm Jason AI your Virtual Assistant. What can I help?",
@@ -89,8 +90,15 @@ class _VirtualAssistantState extends State<VirtualAssistant> {
     super.initState();
     _speech = stt.SpeechToText();
     _flutterTts = FlutterTts();
-    _flutterTts.setPitch(4.0);
+    _flutterTts.setPitch(1.0);
     _flutterTts.setSpeechRate(1.0);
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   void _handleCommand(String text) {
@@ -116,6 +124,19 @@ class _VirtualAssistantState extends State<VirtualAssistant> {
             .add({"text": text, "isUser": true, "sentiment": sentimentScore});
         _conversation.add({"text": response, "isUser": false, "sentiment": 0});
       });
+      _scrollToBottom();
+    });
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
@@ -178,6 +199,11 @@ class _VirtualAssistantState extends State<VirtualAssistant> {
 
   void _speak(String text, String lang) async {
     await _flutterTts.setLanguage(lang == 'indonesian' ? 'id-ID' : 'en-US');
+    if (lang == 'indonesian') {
+      await _flutterTts.setVoice({"name": "id-id-x-idd-local", "locale": "id-ID"});
+    } else {
+      await _flutterTts.setVoice({"name": "en-us-x-sfg-local", "locale": "en-US"});
+    }
     await _flutterTts.speak(text);
   }
 
@@ -212,6 +238,7 @@ class _VirtualAssistantState extends State<VirtualAssistant> {
           children: [
             Expanded(
               child: ListView.builder(
+                controller: _scrollController,
                 itemCount: _conversation.length,
                 itemBuilder: (context, index) {
                   return ChatBubble(
@@ -319,3 +346,4 @@ class ChatBubble extends StatelessWidget {
     );
   }
 }
+
